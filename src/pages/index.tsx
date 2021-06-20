@@ -50,7 +50,7 @@ export default function Home() {
 	return (
 		<div>
 			<div className="w-full p-4 space-y-8">
-				<div onClick={() => setPortfolioModal(true)}>
+				<div className="cursor-pointer" onClick={() => setPortfolioModal(true)}>
 					<label className="leading-7 text-2xl text-indigo-400">Total portfolio</label>
 					<p className="text-4xl mt-1 text-indigo-600">{`${calculatePortfolioValue()} €`}</p>
 				</div>
@@ -160,7 +160,7 @@ const BaseModal: React.FC<{ onSubmit: () => void, onClose: () => void }> = ({
 
 	return (
 		<div className="bg-gray-100 h-auto absolute bottom-0 w-full z-10 p-4 space-y-4 flex flex-col justify-between">
-			<div className="flex flex-row justify-end -mb-4" onClick={onClose}>
+			<div className="flex flex-row justify-end -mb-4 cursor-pointer" onClick={onClose}>
 				<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="lightgray">
 					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 				</svg>
