@@ -15,7 +15,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 				<meta name='apple-mobile-web-app-title' content='KeepSketch' />
 				<meta name='description' content='KeepSketch - No-fluff money tracker' />
 				<link rel="icon" type="image/png" sizes="196x196" href="public/favicon-196.png" />
-				<link rel="apple-touch-icon" href="public/apple-icon-180.png" />
+				<link rel="apple-touch-icon" sizes="180x180" href="public/apple-icon-180.png" />
 				<meta name="apple-mobile-web-app-capable" content="yes" />
 				<link rel="apple-touch-startup-image" href="public/apple-splash-2048-2732.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
 				<link rel="apple-touch-startup-image" href="public/apple-splash-2732-2048.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
