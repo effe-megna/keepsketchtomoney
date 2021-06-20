@@ -4,14 +4,27 @@ import moment from "moment"
 type State = {
 	records: Record[]
 	portfolio: string
+	budget: Budget | undefined
+}
+
+type Category = "FAST_FOOD" | "RESTAURANT" | "TRANSPORT" | "BILLS" | "HOUSE RENTAL"
+
+type Record = {
+	price: string
+	category: Category
+	created_at: Date
+}
+
+type Budget = {
+	name: string
+	value: string
 }
 
 export default function Home() {
-	const [state, setState] = useLocalStorage<State>('state', { records: [], portfolio: "0" })
+	const [state, setState] = useLocalStorage<State>('state', { records: [], portfolio: "0", budget: undefined })
 	const [recordModal, setRecordModal] = React.useState<Record | 'init' | undefined>(undefined)
 	const [portfolioModal, setPortfolioModal] = React.useState(false)
-
-	console.log(state)
+	const [budgetModal, setBudgetModal] = React.useState(false)
 
 	const handleOnConfirm = (r: Record) => {
 		setRecordModal(undefined)
@@ -21,6 +34,11 @@ export default function Home() {
 	const handleOnPortfolioConfirm = (s: string) => {
 		setPortfolioModal(false)
 		setState({ ...state, portfolio: s })
+	}
+
+	const handleOnBudgetConfirm = (b: Budget) => {
+		setBudgetModal(false)
+		setState({ ...state, budget: b })
 	}
 
 	const calculatePortfolioValue = () => {
@@ -33,16 +51,41 @@ export default function Home() {
 		return value < 0 ? 0 : value
 	}
 
-	const spendingThisMonth = (): number => {
+	const getMonthlyRecords = (): Record[] => {
 		const currentMonth = moment().month()
 
-		const recordFiltered = state.records.filter(r =>
+		return state.records.filter(r =>
 			moment(r.created_at).month() === currentMonth
 		)
+	}
 
-		const prices = recordFiltered.map(r => r.price)
+	const spendingThisMonth = (): number => {
+		const prices = getMonthlyRecords().map(r => r.price)
 
 		return prices.reduce((acc, curr) => acc + parseFloat(curr), 0)
+	}
+
+	const calculateBudgetData = (): { left: string, percentage: string, widthClassname: string, percentageColor: string } => {
+		const budget = state.budget
+
+		if (!budget) return
+
+		const spending = spendingThisMonth()
+
+		const difference = spending - parseFloat(budget.value)
+
+		const absDiffrence = Math.abs(difference)
+
+		const percentage = (spending / parseFloat(budget.value) * 100)
+
+		const spendingIsOverBudget = percentage > 100
+
+		return {
+			left: spendingIsOverBudget ? `- ${absDiffrence}` : absDiffrence.toString(),
+			percentage: `${percentage.toFixed(1)} %`,
+			widthClassname: fromPercentageToWidthClassname(percentage),
+			percentageColor: spendingIsOverBudget ? 'text-red-500' : 'text-gray-500'
+		}
 	}
 
 	const currentMonthName = moment().format('MMMM')
@@ -59,7 +102,33 @@ export default function Home() {
 					<p className="text-4xl mt-1 text-indigo-600">{`${spendingThisMonth()} €`}</p>
 				</div>
 				<div>
-					<label className="leading-7 text-xl text-gray-600">Records</label>
+					{state.budget ? (
+						<>
+							<Label>
+								{`Budget for ${state.budget.name}`}
+							</Label>
+							<div className="flex flex-col mt-2">
+								<div className="flex justify-between items-center mx-2">
+									<p className={`relative ${calculateBudgetData().percentageColor} text-sm`}>{calculateBudgetData().percentage}</p>
+									<p className={`${calculateBudgetData().percentageColor} text-base`}>{`${calculateBudgetData().left} €`}</p>
+								</div>
+								<div className="bg-gray-300 rounded-full">
+									<div
+										className={`${calculateBudgetData().widthClassname} h-4 bg-indigo-600 rounded-full`}
+									/>
+								</div>
+							</div>
+						</>
+					) : (
+						<div className="cursor-pointer" onClick={() => setBudgetModal(true)}>
+							<Label>
+								Add budget
+							</Label>
+						</div>
+					)}
+				</div>
+				<div>
+					{state.records.length > 0 && <label className="leading-7 text-xl text-gray-600">Records</label>}
 					<div className="flex flex-col w-full">
 						{state.records.map((r, i) => (
 							<div className="flex justify-between w-full" key={i}>
@@ -71,6 +140,7 @@ export default function Home() {
 				</div>
 			</div>
 			{recordModal && <RecordModal onConfirm={handleOnConfirm} onClose={() => setRecordModal(undefined)} />}
+			{budgetModal && <BudgetModal onConfirm={handleOnBudgetConfirm} onClose={() => setBudgetModal(false)} />}
 			{portfolioModal && <PortfolioModal value={state.portfolio} onClose={() => setPortfolioModal(false)} onConfirm={handleOnPortfolioConfirm} />}
 			<button
 				className="absolute bottom-4 right-4 text-white bg-indigo-500 border-0 p-4 focus:outline-none hover:bg-indigo-600 rounded-full"
@@ -84,13 +154,11 @@ export default function Home() {
 	);
 }
 
-type Category = "FAST_FOOD" | "RESTAURANT" | "TRANSPORT" | "BILLS" | "HOUSE RENTAL"
-
-type Record = {
-	price: string
-	category: Category
-	created_at: Date
-}
+const Label: React.FC = ({
+	children
+}) => (
+	<label className="leading-7 text-2xl text-indigo-400">{children}</label>
+)
 
 const RecordModal: React.FC<{ onConfirm: (r: Record) => void, onClose: () => void }> = ({
 	onConfirm,
@@ -108,35 +176,35 @@ const RecordModal: React.FC<{ onConfirm: (r: Record) => void, onClose: () => voi
 	return (
 		<BaseModal onSubmit={onConfirmHandler} onClose={onClose}>
 			<div>
-				<Input label="Price" value={price} onTxtChange={setPrice} />
+				<Input label="Price" value={price} onTxtChange={setPrice} type="number"/>
 				<div className="flex flex-col space-y-2">
 					<label className="leading-7 text-xl text-gray-600">Category</label>
 					<div className="flex flex-col">
-						<CategoryRow label="FAST FOOD">
+						<CategoryRow label="FAST FOOD" onClick={() => setCategory("FAST_FOOD")}>
 							<PizzaCategory
 								onClick={() => setCategory("FAST_FOOD")}
 								active={category === "FAST_FOOD"}
 							/>
 						</CategoryRow>
-						<CategoryRow label="RESTAURANT">
+						<CategoryRow label="RESTAURANT" onClick={() => setCategory("RESTAURANT")}>
 							<RestaurantCategory
 								onClick={() => setCategory("RESTAURANT")}
 								active={category === "RESTAURANT"}
 							/>
 						</CategoryRow>
-						<CategoryRow label="TRANSPORT">
+						<CategoryRow label="TRANSPORT" onClick={() => setCategory("TRANSPORT")}>
 							<TransportCategory
 								onClick={() => setCategory("TRANSPORT")}
 								active={category === "TRANSPORT"}
 							/>
 						</CategoryRow>
-						<CategoryRow label="HOUSE RENTAL">
+						<CategoryRow label="HOUSE RENTAL" onClick={() => setCategory("HOUSE RENTAL")}>
 							<HouseRentalCategory
 								onClick={() => setCategory("HOUSE RENTAL")}
 								active={category === "HOUSE RENTAL"}
 							/>
 						</CategoryRow>
-						<CategoryRow label="BILLS">
+						<CategoryRow label="BILLS" onClick={() => setCategory("BILLS")}>
 							<BillsCategory
 								onClick={() => setCategory("BILLS")}
 								active={category === "BILLS"}
@@ -149,11 +217,12 @@ const RecordModal: React.FC<{ onConfirm: (r: Record) => void, onClose: () => voi
 	)
 }
 
-const CategoryRow: React.FC<{ label: string }> = ({
+const CategoryRow: React.FC<{ label: string, onClick: () => void }> = ({
 	label,
+	onClick,
 	children
 }) => (
-	<div className="flex flex-row space-x-4 items-center">
+	<div onClick={onClick} className="flex flex-row space-x-4 items-center">
 		{children}
 		<label className="leading-7 text-base text-gray-600">{label}</label>
 	</div>
@@ -174,6 +243,41 @@ const PortfolioModal: React.FC<{ value: string, onConfirm: (s: string) => void, 
 			<Input
 				label="Initial portfolio value"
 				value={portfolioValue}
+				type="number"
+				onTxtChange={setValue}
+			/>
+		</BaseModal>
+	)
+}
+
+const BudgetModal: React.FC<{ onConfirm: (b: Budget) => void, onClose: () => void }> = ({
+	onConfirm,
+	onClose
+}) => {
+	const [value, setValue] = React.useState("0.0")
+	const [name, setName] = React.useState("")
+
+	const onConfirmHandler = () => {
+		if ((value && parseInt(value) === 0) || !name) return
+
+		onConfirm({ value, name })		
+	}
+
+	return (
+		<BaseModal
+			onSubmit={onConfirmHandler}
+			onClose={onClose}
+		>
+			<Input
+				label="What this budget is for?"
+				value={name}
+				type="text"
+				onTxtChange={setName}
+			/>
+			<Input
+				label="How much do you want to spend this month?"
+				value={value}
+				type="number"
 				onTxtChange={setValue}
 			/>
 		</BaseModal>
@@ -201,10 +305,10 @@ const BaseModal: React.FC<{ onSubmit: () => void, onClose: () => void }> = ({
 	)
 }
 
-const Input: React.FC<{ label: string, value: string, onTxtChange: (s: string) => void }> = ({ label, value, onTxtChange }) => (
+const Input: React.FC<{ type: string, label: string, value: string, onTxtChange: (s: string) => void }> = ({ type, label, value, onTxtChange }) => (
 	<div className="space-y-2 mb-4">
 		<label className="leading-7 text-xl text-gray-600">{label}</label>
-		<input value={value} onChange={(evt) => onTxtChange(evt.currentTarget.value)} type="number" className="max-h-24 w-full bg-white rounded focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-2xl outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out" />
+		<input value={value} onChange={(evt) => onTxtChange(evt.currentTarget.value)} type={type} className="max-h-24 w-full bg-white rounded focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-2xl outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out" />
 	</div>
 )
 
@@ -555,7 +659,39 @@ const TransportCategory: React.FC<{ active: boolean, onClick: () => void }> = ({
 
 
 
+const fromPercentageToWidthClassname = (n: number) => {
+	const baseValue = 8.3
 
+	if (n === 0) {
+		return 'w-0'
+	}
+
+	if (n <= baseValue) {
+		return 'w-1/12'
+	} else if (n <= (baseValue * 2)) {
+		return 'w-2/12'
+	} else if (n <= (baseValue * 3)) {
+		return 'w-3/12'
+	} else if (n <= (baseValue * 4)) {
+		return 'w-4/12'
+	} else if (n <= (baseValue * 5)) {
+		return 'w-5/12'
+	} else if (n <= (baseValue * 6)) {
+		return 'w-6/12'
+	} else if (n <= (baseValue * 7)) {
+		return 'w-7/12'
+	} else if (n <= (baseValue * 8)) {
+		return 'w-8/12'
+	} else if (n <= (baseValue * 9)) {
+		return 'w-9/12'
+	} else if (n <= (baseValue * 10)) {
+		return 'w-10/12'
+	} else if (n <= (baseValue * 11)) {
+		return 'w-11/12'
+	} else {
+		return "w-full"
+	}
+}
 
 
 
