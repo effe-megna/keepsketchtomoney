@@ -18,6 +18,7 @@ type Record = {
 type Budget = {
 	name: string
 	value: string
+	categoriesIncluded: Category[]
 }
 
 export default function Home() {
@@ -59,8 +60,14 @@ export default function Home() {
 		)
 	}
 
-	const spendingThisMonth = (): number => {
-		const prices = getMonthlyRecords().map(r => r.price)
+	const spendingThisMonth = (includeCategories?: Category[]): number => {
+		const prices = (() => {
+			if (includeCategories) {
+				return getMonthlyRecords().filter(r => includeCategories.includes(r.category)).map(r => r.price)
+			} else {
+				return getMonthlyRecords().map(r => r.price)
+			}
+		})()
 
 		return prices.reduce((acc, curr) => acc + parseFloat(curr), 0)
 	}
@@ -70,7 +77,7 @@ export default function Home() {
 
 		if (!budget) return
 
-		const spending = spendingThisMonth()
+		const spending = spendingThisMonth(state.budget.categoriesIncluded)
 
 		const difference = spending - parseFloat(budget.value)
 
@@ -165,7 +172,7 @@ const RecordModal: React.FC<{ onConfirm: (r: Record) => void, onClose: () => voi
 	onClose
 }) => {
 	const [price, setPrice] = React.useState<string>("0.0")
-	const [category, setCategory] = React.useState<Category | undefined>("FAST_FOOD")
+	const [category, setCategory] = React.useState<Category | undefined>()
 
 	const onConfirmHandler = () => {
 		if (!category) return
@@ -176,41 +183,13 @@ const RecordModal: React.FC<{ onConfirm: (r: Record) => void, onClose: () => voi
 	return (
 		<BaseModal onSubmit={onConfirmHandler} onClose={onClose}>
 			<div>
-				<Input label="Price" value={price} onTxtChange={setPrice} type="number"/>
+				<Input label="Price" value={price} onTxtChange={setPrice} type="number" />
 				<div className="flex flex-col space-y-2">
 					<label className="leading-7 text-xl text-gray-600">Category</label>
-					<div className="flex flex-col">
-						<CategoryRow label="FAST FOOD" onClick={() => setCategory("FAST_FOOD")}>
-							<PizzaCategory
-								onClick={() => setCategory("FAST_FOOD")}
-								active={category === "FAST_FOOD"}
-							/>
-						</CategoryRow>
-						<CategoryRow label="RESTAURANT" onClick={() => setCategory("RESTAURANT")}>
-							<RestaurantCategory
-								onClick={() => setCategory("RESTAURANT")}
-								active={category === "RESTAURANT"}
-							/>
-						</CategoryRow>
-						<CategoryRow label="TRANSPORT" onClick={() => setCategory("TRANSPORT")}>
-							<TransportCategory
-								onClick={() => setCategory("TRANSPORT")}
-								active={category === "TRANSPORT"}
-							/>
-						</CategoryRow>
-						<CategoryRow label="HOUSE RENTAL" onClick={() => setCategory("HOUSE RENTAL")}>
-							<HouseRentalCategory
-								onClick={() => setCategory("HOUSE RENTAL")}
-								active={category === "HOUSE RENTAL"}
-							/>
-						</CategoryRow>
-						<CategoryRow label="BILLS" onClick={() => setCategory("BILLS")}>
-							<BillsCategory
-								onClick={() => setCategory("BILLS")}
-								active={category === "BILLS"}
-							/>
-						</CategoryRow>
-					</div>
+					<CategoriesList
+						activeCategories={[category]}
+						setCategory={setCategory}
+					/>
 				</div>
 			</div>
 		</BaseModal>
@@ -256,11 +235,20 @@ const BudgetModal: React.FC<{ onConfirm: (b: Budget) => void, onClose: () => voi
 }) => {
 	const [value, setValue] = React.useState("0.0")
 	const [name, setName] = React.useState("")
+	const [categories, setCategories] = React.useState<Category[]>([])
 
 	const onConfirmHandler = () => {
 		if ((value && parseInt(value) === 0) || !name) return
 
-		onConfirm({ value, name })		
+		onConfirm({ value, name, categoriesIncluded: categories })
+	}
+
+	const setCategoriesHandler = (c: Category) => {
+		if (categories.includes(c)) {
+			setCategories(categories.filter(cx => cx !== c))
+		} else {
+			setCategories(categories.concat([c]))
+		}
 	}
 
 	return (
@@ -280,6 +268,13 @@ const BudgetModal: React.FC<{ onConfirm: (b: Budget) => void, onClose: () => voi
 				type="number"
 				onTxtChange={setValue}
 			/>
+			<div>
+				<label className="leading-7 text-xl text-gray-600">Filter budget by categories</label>
+				<CategoriesList
+					activeCategories={categories}
+					setCategory={setCategoriesHandler}
+				/>
+			</div>
 		</BaseModal>
 	)
 }
@@ -291,9 +286,9 @@ const BaseModal: React.FC<{ onSubmit: () => void, onClose: () => void }> = ({
 }) => {
 
 	return (
-		<div className="bg-gray-100 h-auto absolute bottom-0 w-full z-10 p-4 space-y-4 flex flex-col justify-between">
+		<div className="bg-gray-100 h-auto absolute border-t-4 shadow-2xl border-gray-600 bottom-0 w-full z-10 p-4 space-y-4 flex flex-col justify-between">
 			<div className="flex flex-row justify-end -mb-4 cursor-pointer" onClick={onClose}>
-				<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="lightgray">
+				<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="gray">
 					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</div>
@@ -304,6 +299,50 @@ const BaseModal: React.FC<{ onSubmit: () => void, onClose: () => void }> = ({
 		</div>
 	)
 }
+
+const CategoriesList: React.FC<{
+	activeCategories: Category[],
+	setCategory: (c: Category) => void
+}> = ({
+	activeCategories,
+	setCategory
+}) => {
+
+		return (
+			<div className="flex flex-col">
+				<CategoryRow label="FAST FOOD" onClick={() => setCategory("FAST_FOOD")}>
+					<PizzaCategory
+						onClick={() => setCategory("FAST_FOOD")}
+						active={activeCategories.includes("FAST_FOOD")}
+					/>
+				</CategoryRow>
+				<CategoryRow label="RESTAURANT" onClick={() => setCategory("RESTAURANT")}>
+					<RestaurantCategory
+						onClick={() => setCategory("RESTAURANT")}
+						active={activeCategories.includes("RESTAURANT")}
+					/>
+				</CategoryRow>
+				<CategoryRow label="TRANSPORT" onClick={() => setCategory("TRANSPORT")}>
+					<TransportCategory
+						onClick={() => setCategory("TRANSPORT")}
+						active={activeCategories.includes("TRANSPORT")}
+					/>
+				</CategoryRow>
+				<CategoryRow label="HOUSE RENTAL" onClick={() => setCategory("HOUSE RENTAL")}>
+					<HouseRentalCategory
+						onClick={() => setCategory("HOUSE RENTAL")}
+						active={activeCategories.includes("HOUSE RENTAL")}
+					/>
+				</CategoryRow>
+				<CategoryRow label="BILLS" onClick={() => setCategory("BILLS")}>
+					<BillsCategory
+						onClick={() => setCategory("BILLS")}
+						active={activeCategories.includes("BILLS")}
+					/>
+				</CategoryRow>
+			</div>
+		)
+	}
 
 const Input: React.FC<{ type: string, label: string, value: string, onTxtChange: (s: string) => void }> = ({ type, label, value, onTxtChange }) => (
 	<div className="space-y-2 mb-4">
@@ -634,7 +673,6 @@ const BillsCategory: React.FC<{ active: boolean, onClick: () => void }> = ({
 	</IconButton>
 )
 
-
 const TransportCategory: React.FC<{ active: boolean, onClick: () => void }> = ({
 	active,
 	onClick
@@ -646,18 +684,6 @@ const TransportCategory: React.FC<{ active: boolean, onClick: () => void }> = ({
 		<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd"><path d="M16 3h-8v-1h8v1zm4 10.228c-1.194.276-3.91.772-8 .772-4.091 0-6.807-.496-8-.772v-8.228h16v8.228zm.5-9.228h-17c-.276 0-.5.224-.5.5v9.5s3.098 1 9 1 9-1 9-1v-9.5c0-.276-.224-.5-.5-.5zm-5.5 14.5c0 .276-.224.5-.5.5h-5c-.276 0-.5-.224-.5-.5s.224-.5.5-.5h5c.276 0 .5.224.5.5zm4 .5c-.552 0-1-.448-1-1s.448-1 1-1 1 .448 1 1-.448 1-1 1zm0-3c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm-14 3c-.551 0-1-.448-1-1s.449-1 1-1c.551 0 1 .448 1 1s-.449 1-1 1zm0-3c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm18-5h-1v9c0 .621-.52 1-1 1h-18c-.617 0-1-.516-1-1v-9h-1v-3h1v-5c0-1.103.897-2 2-2h16c1.103 0 2 .897 2 2v5h1v3zm-3 12h-2v-1h2v1zm-14 0h-2v-1h2v1zm17-16v-4c0-1.657-1.343-3-3-3h-16c-1.657 0-3 1.343-3 3v4c-.552 0-1 .448-1 1v3c0 .552.448 1 1 1v8c0 1.239 1.037 2 2 2v1c0 .552.448 1 1 1h2c.552 0 1-.448 1-1v-1h10v1c0 .552.448 1 1 1h2c.552 0 1-.448 1-1v-1c.958 0 2-.758 2-2v-8c.552 0 1-.448 1-1v-3c0-.552-.448-1-1-1z" /></svg>
 	</IconButton>
 )
-
-
-
-
-
-
-
-
-
-
-
-
 
 const fromPercentageToWidthClassname = (n: number) => {
 	const baseValue = 8.3
