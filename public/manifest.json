@@ -1,4 +1,6 @@
 {
+	"name": "KeepSketch",
+  "short_name": "KeepSketch",
   "icons": [
     {
       "src": "public/manifest-icon-192.png",
@@ -12,5 +14,10 @@
       "type": "image/png",
       "purpose": "maskable any"
     }
-  ]
+  ],
+  "theme_color": "#FFFFFF",
+  "background_color": "#FFFFFF",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait"
 }
