@@ -101,7 +101,7 @@ export default function Home() {
 	return (
 		<div>
 			<div className="w-full p-4 space-y-8">
-				<div>
+				{/* <div>
 					<div className="mb-2">
 						<label className="pt-8 leading-7 text-3xl font-semibold text-gray-800">Planned payments</label>
 					</div>
@@ -116,7 +116,7 @@ export default function Home() {
 					<div className="bg-gray-200 h-auto w-full shadow-lg rounded-md p-4">
 						<PortfolioSvg />
 					</div>
-				</div>
+				</div> */}
 				<div className="cursor-pointer" onClick={() => setPortfolioModal(true)}>
 					<label className="leading-7 text-2xl text-indigo-400">Total portfolio</label>
 					<p className="text-4xl mt-1 text-indigo-600">{`${calculatePortfolioValue()} €`}</p>
