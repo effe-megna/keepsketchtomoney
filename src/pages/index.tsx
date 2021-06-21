@@ -389,7 +389,7 @@ const CategoriesList: React.FC<{
 					/>
 				</CategoryRow>
 				<CategoryRow label="GYM AND FITNESS" onClick={() => setCategory("GYM_AND_FITNESS")}>
-					<FoodAndDrinks
+					<GymCategory
 						onClick={() => setCategory("GYM_AND_FITNESS")}
 						active={activeCategories.includes("GYM_AND_FITNESS")}
 					/>
