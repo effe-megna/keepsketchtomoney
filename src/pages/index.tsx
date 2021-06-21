@@ -1,15 +1,16 @@
 import React from "react";
 import moment from "moment"
+import { VictoryPie } from "victory"
 
 type State = {
-	records: Record[]
+	records: RecordPrice[]
 	portfolio: string
 	budget: Budget | undefined
 }
 
 type Category = "FAST_FOOD" | "RESTAURANT" | "TRANSPORT" | "BILLS" | "HOUSE RENTAL" | 'FOOD_AND_DRINKS' | 'GYM_AND_FITNESS'
 
-type Record = {
+type RecordPrice = {
 	price: string
 	category: Category
 	created_at: Date
@@ -23,12 +24,12 @@ type Budget = {
 
 export default function Home() {
 	const [state, setState] = useLocalStorage<State>('state', { records: [], portfolio: "0", budget: undefined })
-	const [recordModal, setRecordModal] = React.useState<Record | 'init' | undefined>(undefined)
+	const [recordModal, setRecordModal] = React.useState<RecordPrice | 'init' | undefined>(undefined)
 	const [portfolioModal, setPortfolioModal] = React.useState(false)
 	const [budgetModal, setBudgetModal] = React.useState(false)
 	const [menuModal, setMenuModal] = React.useState(false)
 
-	const handleOnConfirm = (r: Record) => {
+	const handleOnConfirm = (r: RecordPrice) => {
 		setRecordModal(undefined)
 		setState({ ...state, records: state.records.concat([r]) })
 	}
@@ -53,12 +54,27 @@ export default function Home() {
 		return value < 0 ? 0 : value
 	}
 
-	const getMonthlyRecords = (): Record[] => {
+	const getMonthlyRecords = (): RecordPrice[] => {
 		const currentMonth = moment().month()
 
 		return state.records.filter(r =>
 			moment(r.created_at).month() === currentMonth
 		)
+	}
+
+	const sumSpendingThisMonthByCategory = (): Record<Category, number> => {
+		//@ts-ignore
+		const categories: Record<Category, number> = {}
+
+		getMonthlyRecords().forEach(r => {
+			if (categories[r.category]) {
+				categories[r.category] = categories[r.category] + parseFloat(r.price)
+			} else {
+				categories[r.category] = parseFloat(r.price)
+			}
+		})
+
+		return categories
 	}
 
 	const spendingThisMonth = (includeCategories?: Category[]): number => {
@@ -100,7 +116,7 @@ export default function Home() {
 
 	return (
 		<div>
-			<div className="w-full p-4 space-y-8">
+			<div className="w-full p-4 space-y-8 overflow-y-auto">
 				{/* <div>
 					<div className="mb-2">
 						<label className="pt-8 leading-7 text-3xl font-semibold text-gray-800">Planned payments</label>
@@ -151,6 +167,16 @@ export default function Home() {
 						</div>
 					)}
 				</div>
+				{state.records.length > 0 && (
+					<div>
+						<Label>Spending per category</Label>
+						<VictoryPie
+							data={Object.entries(sumSpendingThisMonthByCategory()).map(([c, v]) =>
+								({ x: c, y: v })
+							)}
+						/>
+					</div>
+				)}
 				<div>
 					{state.records.length > 0 && <label className="leading-7 text-xl text-gray-600">Records</label>}
 					<div className="flex flex-col w-full">
@@ -168,7 +194,7 @@ export default function Home() {
 			{portfolioModal && <PortfolioModal value={state.portfolio} onClose={() => setPortfolioModal(false)} onConfirm={handleOnPortfolioConfirm} />}
 			{menuModal && <MenuModal onClose={() => setMenuModal(false)} />}
 			<button
-				className="absolute bottom-4 right-4 text-white bg-indigo-500 border-0 p-4 focus:outline-none hover:bg-indigo-600 rounded-full"
+				className="fixed bottom-4 right-4 text-white bg-indigo-500 border-0 p-4 focus:outline-none hover:bg-indigo-600 rounded-full"
 				onClick={() => setRecordModal('init')}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -185,7 +211,7 @@ const Label: React.FC = ({
 	<label className="leading-7 text-2xl text-indigo-400">{children}</label>
 )
 
-const RecordModal: React.FC<{ onConfirm: (r: Record) => void, onClose: () => void }> = ({
+const RecordModal: React.FC<{ onConfirm: (r: RecordPrice) => void, onClose: () => void }> = ({
 	onConfirm,
 	onClose
 }) => {
@@ -759,7 +785,7 @@ const GymCategory: React.FC<{ active: boolean, onClick: () => void }> = ({
 		active={active}
 		onClick={onClick}
 	>
-		<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd"><path d="M24 24h-24v-2h2v-14h-2v-2h24v2h-2v14h2v2zm-13-5h-2v4h2v-4zm4 0h-2v4h2v-4zm5-11h-16v14h3v-5h10v5h3v-14zm-6 7h-4v-5h4v5zm-5 0h-4v-5h4v5zm10 0h-4v-5h4v5zm-10-12v1c0 .551-.447 1-1 1-.552 0-1-.448-1-1v-3c0-.552.448-1 1-1 .553 0 1 .449 1 1v1h6v-1c0-.551.447-1 1-1 .553 0 1 .449 1 1v3c0 .551-.447 1-1 1-.553 0-1-.449-1-1v-1h-6zm9.5 0v.5c0 .276-.224.5-.5.5s-.5-.224-.5-.5v-2c0-.276.224-.5.5-.5s.5.224.5.5v.5h.5v1h-.5zm-13-1v-.5c0-.276.224-.5.5-.5s.5.224.5.5v2c0 .276-.224.5-.5.5s-.5-.224-.5-.5v-.5h-.5v-1h.5z"/></svg>
+		<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd"><path d="M24 24h-24v-2h2v-14h-2v-2h24v2h-2v14h2v2zm-13-5h-2v4h2v-4zm4 0h-2v4h2v-4zm5-11h-16v14h3v-5h10v5h3v-14zm-6 7h-4v-5h4v5zm-5 0h-4v-5h4v5zm10 0h-4v-5h4v5zm-10-12v1c0 .551-.447 1-1 1-.552 0-1-.448-1-1v-3c0-.552.448-1 1-1 .553 0 1 .449 1 1v1h6v-1c0-.551.447-1 1-1 .553 0 1 .449 1 1v3c0 .551-.447 1-1 1-.553 0-1-.449-1-1v-1h-6zm9.5 0v.5c0 .276-.224.5-.5.5s-.5-.224-.5-.5v-2c0-.276.224-.5.5-.5s.5.224.5.5v.5h.5v1h-.5zm-13-1v-.5c0-.276.224-.5.5-.5s.5.224.5.5v2c0 .276-.224.5-.5.5s-.5-.224-.5-.5v-.5h-.5v-1h.5z" /></svg>
 	</IconButton>
 )
 
